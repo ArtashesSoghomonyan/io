@@ -1,3 +1,4 @@
+mod terminal_guard;
 mod editor;
 
 use std::path::Path;
@@ -25,7 +26,7 @@ fn main() {
 
     if path.exists() {
         if path.is_file() {
-            open_file(path);
+            let _ = open_file(path);
         } else {
             println!("Error. {:?} is not a file.", path);
         }
