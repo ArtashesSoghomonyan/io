@@ -11,7 +11,7 @@ pub struct TerminalGuard;
 impl TerminalGuard {
     pub fn new() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
-        execute!(io::stdout(), terminal::EnterAlternateScreen, cursor::Hide)?;
+        execute!(io::stdout(), terminal::EnterAlternateScreen)?;
         Ok(TerminalGuard)
     }
 }
