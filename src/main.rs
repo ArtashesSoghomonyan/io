@@ -1,12 +1,22 @@
+mod settings;
 mod terminal_guard;
 mod editor;
 
-use std::path::Path;
+use std::{
+    path::Path,
+    sync::OnceLock,
+};
 
 use clap::Parser;
 use inquire::Confirm;
 
 use editor::open_file;
+use settings::{
+    load_settings,
+    Settings,
+};
+
+static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
 #[derive(Parser, Debug)]
 struct Arguments {
@@ -23,6 +33,8 @@ struct Arguments {
 fn main() {
     let arguments = Arguments::parse();
     let path = Path::new(&arguments.filename);
+    let settings = load_settings();
+    SETTINGS.set(settings).unwrap();
 
     if path.exists() {
         if path.is_file() {

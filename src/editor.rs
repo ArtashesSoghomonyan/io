@@ -12,6 +12,7 @@ use crossterm::{
     queue
 };
 
+use crate::SETTINGS;
 use crate::terminal_guard::TerminalGuard;
 
 pub fn open_file(filename: &Path) -> io::Result<()> {
@@ -52,7 +53,7 @@ pub fn open_file(filename: &Path) -> io::Result<()> {
             };
             queue!(stdout, cursor::MoveTo(0, row as u16), terminal::Clear(terminal::ClearType::CurrentLine), Print(text))?;
         }
-        let status = format!(" {} lines | Ctrl+Q quit ", lines.len());
+        let status = format!("{}, {}", cursor_line + 1, cursor_col + 1);
         queue!(stdout, cursor::MoveTo(0, view as u16), terminal::Clear(terminal::ClearType::CurrentLine), Print(status))?;
         
         // This part was AI generated btw...
