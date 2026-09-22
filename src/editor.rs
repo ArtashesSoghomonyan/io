@@ -12,6 +12,7 @@ use crossterm::{
     queue
 };
 
+use crate::settings::Settings;
 use crate::SETTINGS;
 use crate::terminal_guard::TerminalGuard;
 
@@ -27,11 +28,20 @@ pub fn open_file(filename: &Path) -> io::Result<()> {
     let mut cursor_line = 0usize;
     let mut cursor_col = 0usize;
 
+    let line_numbers_enabled = SETTINGS
+        .get()
+        .unwrap_or(&Settings::default())
+        .editor
+        .line_numbers;
+    let line_number_margin = if line_numbers_enabled {
+        lines.len().to_string().len() + 1
+    } else { 0 };
+
     loop {
         let (width, height) = terminal::size()?;
         let view = height.saturating_sub(1) as usize;
         let width = width.max(1) as usize;
-        let wrap = width.saturating_sub(1).max(1);
+        let wrap = width.saturating_sub(1 + line_number_margin).max(1);
 
         let mut first_row: Vec<usize> = Vec::with_capacity(lines.len() + 1);
         let mut next = 0usize;
@@ -44,21 +54,29 @@ pub fn open_file(filename: &Path) -> io::Result<()> {
 
         for row in 0..view {
             let vis = top + row;
-            let text: String = if vis < total_rows {
+            let (gutter, text): (String, String) = if vis < total_rows {
                 let line_idx = first_row.partition_point(|&start| start <= vis) - 1;
                 let offset = (vis - first_row[line_idx]) * wrap;
-                lines[line_idx].chars().skip(offset).take(wrap).collect()
+                let text: String = lines[line_idx].chars().skip(offset).take(wrap).collect();
+                let gutter = if line_number_margin == 0 {
+                    String::new()
+                } else if offset == 0 {
+                    format!("{:>w$} ", line_idx + 1, w = line_number_margin - 1)
+                } else {
+                    " ".repeat(line_number_margin)
+                };
+                (gutter, text)
             } else {
-                String::new()
+                (String::new(), String::new())
             };
-            queue!(stdout, cursor::MoveTo(0, row as u16), terminal::Clear(terminal::ClearType::CurrentLine), Print(text))?;
+            queue!(stdout, cursor::MoveTo(0, row as u16), terminal::Clear(terminal::ClearType::CurrentLine), Print(gutter), Print(text))?;
         }
         let status = format!("{}, {}", cursor_line + 1, cursor_col + 1);
         queue!(stdout, cursor::MoveTo(0, view as u16), terminal::Clear(terminal::ClearType::CurrentLine), Print(status))?;
         
         // This part was AI generated btw...
         let caret_vis = first_row.get(cursor_line).copied().unwrap_or(0) + cursor_col / wrap;
-        let caret_col = cursor_col % wrap; // column inside the visual row
+        let caret_col = (line_number_margin + cursor_col % wrap).min(width.saturating_sub(1));
         let caret_row = caret_vis.saturating_sub(top).min(view.saturating_sub(1));
         queue!(stdout, cursor::MoveTo(caret_col as u16, caret_row as u16))?;
 
