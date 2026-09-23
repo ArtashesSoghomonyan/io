@@ -1,8 +1,4 @@
-use std::{
-    fs,
-    io::{self, Write},
-    path::Path
-};
+use std::io::{self, Write};
 
 use crossterm::{
     cursor,
@@ -16,10 +12,7 @@ use crate::settings::Settings;
 use crate::SETTINGS;
 use crate::terminal_guard::TerminalGuard;
 
-pub fn open_file(filename: &Path) -> io::Result<()> {
-    let content = fs::read_to_string(filename)
-        .map_err(|err| io::Error::new(err.kind(), format!("couldn't read {filename:?}: {err}")))?;
-
+pub fn display_file(content: &String) -> io::Result<()> {
     let lines: Vec<&str> = content.lines().collect();
     let line_chars: Vec<usize> = lines.iter().map(|line| line.chars().count()).collect();
     let mut stdout = io::stdout();
