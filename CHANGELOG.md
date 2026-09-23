@@ -6,3 +6,9 @@
 - File viewer with status bar, line breaks and cursor
 - Settings file that will be located in ~/io.config.toml
 - Github Actions support
+
+## [0.1.1] - 2026-09-23
+
+### Fixed
+- Ubuntu & Windows compilation error
+- Github Actions auto release draft

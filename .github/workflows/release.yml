@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:            # lets you dry-run the matrix without tagging
+
+permissions:
+  contents: write               # required to create the draft release
 
 jobs:
   build:
@@ -13,23 +17,19 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-
           - os: macos-latest
             target: aarch64-apple-darwin
-
           - os: macos-latest
             target: x86_64-apple-darwin
-
           - os: windows-latest
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -45,3 +45,40 @@ jobs:
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash          # windows-latest defaults to pwsh
+        run: |
+          set -euo pipefail
+          bin="target/${{ matrix.target }}/release/io"
+          [ -f "$bin.exe" ] && bin="$bin.exe"
+          mkdir -p dist
+          tar -czf "dist/io-${{ matrix.target }}.tar.gz" -C "$(dirname "$bin")" "$(basename "$bin")"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: io-${{ matrix.target }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: io-*
+          merge-multiple: true
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*.tar.gz
+          draft: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          # make_latest intentionally omitted: drafts cannot be "latest"
