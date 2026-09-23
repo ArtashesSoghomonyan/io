@@ -94,17 +94,13 @@ pub fn open_file(filename: &str) -> Result<String, io::Error> {
 
         // Checking if the file is readable
         if !File::open(path).is_ok() {
-            let err_message = format!("
-                Error: File is not readable.
-                Hint: Try to do `$ chmod +r {filename}`");
+            let err_message = format!("Error: File is not readable.\nHint: Try to do `$ chmod +r {filename}`");
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, err_message.red().to_string()));
         }
 
         // Checking if the file is writeable
         if !can_write(&path) {
-            let err_message = format!("
-                Error: File is not writeable.
-                Hint: Try to do `$ chmod +w {filename}`");
+            let err_message = format!("Error: File is not writeable.\nHint: Try to do `$ chmod +w {filename}`");
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, err_message.red().to_string()));
         }
 
