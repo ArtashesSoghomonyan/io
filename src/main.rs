@@ -1,18 +1,16 @@
-mod settings;
-mod terminal_guard;
 mod editor;
 mod file;
+mod keybindings;
+mod settings;
+mod terminal;
 
-use std::sync::OnceLock;
+use std::{path::Path, sync::OnceLock};
 
 use clap::Parser;
 
 use editor::display_file;
-use settings::{
-    load_settings,
-    Settings,
-};
 use file::open_file;
+use settings::{Settings, load_settings};
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
@@ -46,7 +44,7 @@ fn main() {
                 std::process::exit(1);
             }
         };
-        if let Err(error) = display_file(&content) {
+        if let Err(error) = display_file(Path::new(filename), &content) {
             eprintln!("{error}");
             std::process::exit(1);
         }

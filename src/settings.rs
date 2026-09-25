@@ -2,7 +2,7 @@ use std::fs;
 
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     #[serde(default)]
@@ -17,7 +17,7 @@ impl Default for Settings {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct EditorSettings {
     pub line_numbers: bool,
 }
@@ -40,8 +40,8 @@ pub fn load_settings() -> Settings {
     };
 
     match toml::from_str(&contents) {
-        Ok(data) => return data,
+        Ok(data) => data,
         // TODO: Maybe display in error screen later.
-        Err(_) => return Settings::default()
+        Err(_) => Settings::default(),
     }
 }
