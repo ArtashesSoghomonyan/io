@@ -6,25 +6,21 @@ use crate::{editor::Editor, file::save_file};
 /// The return type is for telling if the editor should quit (true) or not (false)
 pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize) -> bool {
     match key.code {
-        KeyCode::Char('q') => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                true
-            } else {
-                false
-            }
-        }
-        KeyCode::Char('s') => {
-            if key.modifiers.contains(KeyModifiers::CONTROL) {
-                match save_file(&editor.path, &editor.lines.join("\n")) {
-                    Ok(()) => {}
-                    Err(err) => editor.status_message = err.to_string(),
-                };
-                return false;
-            } else {
-                false
-            }
+        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => true,
+        KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            match save_file(&editor.path, &editor.lines.join("\n")) {
+                Ok(()) => {}
+                Err(err) => editor.status_message = err.to_string(),
+            };
+            false
         }
         KeyCode::Up => {
+            // Shift + up = page up
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                editor.cursor.line = editor.cursor.line.saturating_sub(visible_line_count);
+                return false;
+            }
+
             if editor.cursor.line > 0 {
                 editor.cursor.line -= 1;
                 let line_len = editor.line_chars()[editor.cursor.line];
@@ -33,6 +29,13 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
             false
         }
         KeyCode::Down => {
+            // Shift + down = page down
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                editor.cursor.line = (editor.cursor.line + visible_line_count)
+                    .min(editor.lines.len().saturating_sub(1));
+                return false;
+            }
+
             if editor.cursor.line + 1 < editor.lines.len() {
                 editor.cursor.line += 1;
                 let line_len = editor.line_chars()[editor.cursor.line];
@@ -55,6 +58,50 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
                 editor.cursor.col += 1;
             };
             false
+        }
+        KeyCode::Backspace => {
+            if editor.lines.len() == 0 {
+                return false;
+            }
+
+            if editor.lines[editor.cursor.line].len() == 0 && editor.cursor.line != 0 {
+                editor.lines.remove(editor.cursor.line);
+                editor.cursor.line -= 1;
+                editor.cursor.col = editor.lines[editor.cursor.line].len();
+                return false;
+            }
+
+            if editor.lines[editor.cursor.line].len() > 0 {
+                if editor.cursor.col == 0 {
+                    let new_cursor_col = editor.lines[editor.cursor.line - 1].len();
+                    let current_line = editor.lines.remove(editor.cursor.line);
+                    editor.lines[editor.cursor.line - 1].push_str(&current_line);
+                    editor.cursor.line -= 1;
+                    editor.cursor.col = new_cursor_col;
+                } else {
+                    editor.lines[editor.cursor.line].remove(editor.cursor.col - 1);
+                    editor.cursor.col -= 1;
+                }
+                return false;
+            }
+
+            return false;
+        }
+        KeyCode::Enter => {
+            let reminder: String = editor.lines[editor.cursor.line]
+                .chars()
+                .skip(editor.cursor.col)
+                .collect();
+
+            editor.lines[editor.cursor.line] = editor.lines[editor.cursor.line]
+                .chars()
+                .take(editor.cursor.col)
+                .collect();
+
+            editor.lines.insert(editor.cursor.line + 1, reminder);
+            editor.cursor.line += 1;
+            editor.cursor.col = 0;
+            return false;
         }
         KeyCode::PageUp => {
             editor.cursor.line = editor.cursor.line.saturating_sub(visible_line_count);
