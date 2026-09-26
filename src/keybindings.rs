@@ -1,17 +1,10 @@
-use std::path::Path;
-
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::{editor::Editor, file::save_file};
 
 /// This function is for handling keyboard keys
 /// The return type is for telling if the editor should quit (true) or not (false)
-pub fn handle_key(
-    key: KeyEvent,
-    editor: &mut Editor,
-    visible_line_count: usize,
-    path: &Path,
-) -> bool {
+pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize) -> bool {
     match key.code {
         KeyCode::Char('q') => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
@@ -22,9 +15,9 @@ pub fn handle_key(
         }
         KeyCode::Char('s') => {
             if key.modifiers.contains(KeyModifiers::CONTROL) {
-                match save_file(path, &editor.lines.join("\n")) {
+                match save_file(&editor.path, &editor.lines.join("\n")) {
                     Ok(()) => {}
-                    Err(err) => editor.status = err.to_string(),
+                    Err(err) => editor.status_message = err.to_string(),
                 };
                 return false;
             } else {

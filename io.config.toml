@@ -1,2 +1,3 @@
 [editor]
-line_numbers = true
+display_cursor_position = true
+enable_line_numbers = true

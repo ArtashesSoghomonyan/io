@@ -12,20 +12,22 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            editor: EditorSettings::default()
+            editor: EditorSettings::default(),
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct EditorSettings {
-    pub line_numbers: bool,
+    pub display_cursor_position: bool,
+    pub enable_line_numbers: bool,
 }
 
 impl Default for EditorSettings {
     fn default() -> Self {
         Self {
-            line_numbers: true,
+            display_cursor_position: true,
+            enable_line_numbers: true,
         }
     }
 }
@@ -33,7 +35,7 @@ impl Default for EditorSettings {
 pub fn load_settings() -> Settings {
     let home = dirs::home_dir().expect("Could not find home directory");
     let path = home.join("io.config.toml");
-    
+
     let contents = match fs::read_to_string(path) {
         Ok(contents) => contents,
         Err(_) => return Settings::default(),

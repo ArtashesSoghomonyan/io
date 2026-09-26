@@ -1,6 +1,6 @@
 use std::{
     io::{self, Write},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use crossterm::{
@@ -26,11 +26,16 @@ pub struct EditorCursor {
 
 #[derive(Clone)]
 pub struct Editor {
+    pub path: PathBuf,
+
     pub lines: Vec<String>,
     pub cursor: EditorCursor,
     pub top: usize,
+    pub width: u16,
+    pub height: u16,
+
     pub settings: EditorSettings,
-    pub status: String,
+    pub status_message: String,
     pub is_changed: bool,
 }
 
@@ -40,10 +45,44 @@ impl Editor {
     }
 
     pub fn line_number_margin(&self) -> usize {
-        if self.settings.line_numbers {
+        if self.settings.enable_line_numbers {
             self.lines.len().to_string().len() + 1
         } else {
             0
+        }
+    }
+
+    pub fn status_bar(&self) -> String {
+        let space_left: usize;
+        let left_part: String;
+
+        if self.settings.display_cursor_position {
+            // 1000, 1000 -> 8 + 1 = 9
+            space_left = self.width.saturating_sub(9) as usize;
+        } else {
+            space_left = self.width as usize;
+        }
+
+        if !self.status_message.is_empty() {
+            left_part = self
+                .status_message
+                .chars()
+                .take(space_left.saturating_sub(3))
+                .collect();
+        } else {
+            left_part = self
+                .path
+                .to_string_lossy()
+                .chars()
+                .take(space_left.saturating_sub(3))
+                .collect();
+        }
+
+        if self.settings.display_cursor_position {
+            let cursor = format!("{}, {}", self.cursor.line + 1, self.cursor.col + 1);
+            format!("{left_part:<w$}{cursor:>9}", w = space_left)
+        } else {
+            left_part
         }
     }
 }
@@ -53,22 +92,29 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
     let _guard: TerminalGuard = TerminalGuard::new()?;
     let status_bar_height = 1;
     let mut editor = Editor {
+        path: path.to_path_buf(),
+
         lines: content.lines().map(|s| s.to_string()).collect(),
         cursor: EditorCursor { line: 0, col: 0 },
         top: 0,
+        width: 0,
+        height: 0,
+
         settings: SETTINGS
             .get()
             .unwrap_or(&Settings::default())
             .editor
             .clone(),
-        status: String::new(),
+        status_message: String::new(),
         is_changed: false,
     };
 
     loop {
         let (width, height) = terminal::size()?;
-        let visible_line_count = height.saturating_sub(status_bar_height) as usize;
-        let width = width.max(1) as usize;
+        editor.width = width;
+        editor.height = height;
+        let visible_line_count = editor.height.saturating_sub(status_bar_height) as usize;
+        let width = editor.width.max(1) as usize;
         let visible_row_count = width.saturating_sub(1 + editor.line_number_margin()).max(1);
 
         let mut first_row: Vec<usize> = Vec::with_capacity(editor.lines.len() + 1);
@@ -109,12 +155,11 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
                 Print(text)
             )?;
         }
-        editor.status = format!("{}, {}", editor.cursor.line + 1, editor.cursor.col + 1);
         queue!(
             stdout,
             cursor::MoveTo(0, visible_line_count as u16),
             terminal::Clear(terminal::ClearType::CurrentLine),
-            Print(&editor.status)
+            Print(&editor.status_bar())
         )?;
 
         // This part was AI generated btw...
@@ -131,7 +176,7 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
 
         match event::read()? {
             Event::Key(key) if key.kind == event::KeyEventKind::Press => {
-                match handle_key(key, &mut editor, visible_line_count, path) {
+                match handle_key(key, &mut editor, visible_line_count) {
                     true => return Ok(()),
                     false => {}
                 }
