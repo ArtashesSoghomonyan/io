@@ -37,6 +37,7 @@ pub struct Editor {
     pub settings: EditorSettings,
     pub status_message: String,
     pub is_changed: bool,
+    pub asking_to_quit: bool,
 }
 
 impl Editor {
@@ -91,10 +92,18 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
     let mut stdout = io::stdout();
     let _guard: TerminalGuard = TerminalGuard::new()?;
     let status_bar_height = 1;
+
+    // `content.lines()` yields nothing for an empty file, but the editor always
+    // needs at least one line so the cursor (line 0) has something to index into.
+    let mut lines: Vec<String> = content.lines().map(|s| s.to_string()).collect();
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
     let mut editor = Editor {
         path: path.to_path_buf(),
 
-        lines: content.lines().map(|s| s.to_string()).collect(),
+        lines,
         cursor: EditorCursor { line: 0, col: 0 },
         top: 0,
         width: 0,
@@ -107,6 +116,7 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
             .clone(),
         status_message: String::new(),
         is_changed: false,
+        asking_to_quit: false,
     };
 
     loop {

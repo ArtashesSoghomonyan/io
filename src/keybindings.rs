@@ -1,3 +1,4 @@
+use colored::Colorize;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::{editor::Editor, file::save_file};
@@ -6,11 +7,31 @@ use crate::{editor::Editor, file::save_file};
 /// The return type is for telling if the editor should quit (true) or not (false)
 pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize) -> bool {
     match key.code {
-        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => true,
+        KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if editor.asking_to_quit {
+                return true;
+            }
+
+            if editor.is_changed {
+                editor.status_message = String::from(
+                    "Would you like to quit without saving? (Ctrl + q)"
+                        .red()
+                        .to_string(),
+                );
+                editor.asking_to_quit = true;
+                return false;
+            } else {
+                return true;
+            }
+        }
         KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            editor.asking_to_quit = false;
             match save_file(&editor.path, &editor.lines.join("\n")) {
-                Ok(()) => {}
-                Err(err) => editor.status_message = err.to_string(),
+                Ok(()) => {
+                    editor.is_changed = false;
+                    editor.status_message = String::from("Saved");
+                }
+                Err(err) => editor.status_message = err.to_string().red().to_string(),
             };
             false
         }
@@ -68,7 +89,6 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
                 editor.lines.remove(editor.cursor.line);
                 editor.cursor.line -= 1;
                 editor.cursor.col = editor.lines[editor.cursor.line].len();
-                return false;
             }
 
             if editor.lines[editor.cursor.line].len() > 0 {
@@ -82,9 +102,10 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
                     editor.lines[editor.cursor.line].remove(editor.cursor.col - 1);
                     editor.cursor.col -= 1;
                 }
-                return false;
             }
 
+            editor.is_changed = true;
+            editor.status_message = editor.status_bar();
             return false;
         }
         KeyCode::Enter => {
@@ -101,6 +122,9 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
             editor.lines.insert(editor.cursor.line + 1, reminder);
             editor.cursor.line += 1;
             editor.cursor.col = 0;
+
+            editor.is_changed = true;
+            editor.status_message = String::new();
             return false;
         }
         KeyCode::PageUp => {
@@ -125,6 +149,8 @@ pub fn handle_key(key: KeyEvent, editor: &mut Editor, visible_line_count: usize)
 
             editor.lines[editor.cursor.line].insert(byte_index, c);
             editor.cursor.col += 1;
+            editor.is_changed = true;
+            editor.status_message = String::new();
             false
         }
         _ => false,
