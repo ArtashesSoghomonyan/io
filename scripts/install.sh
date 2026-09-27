@@ -42,8 +42,7 @@ latest_tag=$(curl -s https://api.github.com/repos/$REPO/releases/latest \
 
 echo $latest_tag
 
-# tar -xvf "" -C /path/to/destination
-curl -LJO "https://github.com/$REPO/releases/download/$latest_tag/$RELEASE"
+curl -sLJO "https://github.com/$REPO/releases/download/$latest_tag/$RELEASE"
 
 tar -xvf "$RELEASE" -C "$INSTALL_DIR"
 
@@ -53,8 +52,8 @@ chmod 777 "$INSTALL_DIR/io"
 
 # Step3: Install default io config
 
-curl -LJO "https://raw.githubusercontent.com/$REPO/refs/heads/main/io.config.toml"
+curl -sLJO "https://raw.githubusercontent.com/$REPO/refs/heads/main/io.config.toml"
 
 mv io.config.toml ~
 
-echo "Install completed!"
+echo "io installation completed!"

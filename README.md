@@ -1,12 +1,23 @@
 # IO
-Terminal based text editor written in Rust.
+Terminal based text editor written in Rust. This text editor is not modal like vim
 
-## Compilation
+## Keybindings
+Currently the keybindings are not customizable, meaning that you can't add new keybindings or change the existing ones
 
-```bash
-cargo build --release --target x86_64-unknown-linux-gnu
-cargo build --release --target aarch64-unknown-linux-gnu
-cargo build --release --target x86_64-apple-darwin
-cargo build --release --target aarch64-apple-darwin
-cargo build --release --target x86_64-pc-windows-msvc
-```
+| Key | Action |
+| --- | ------ |
+| `Ctrl + S` | Save |
+| `Ctrl + Q` | Quit |
+| `↑` `↓` `←` `→` | Navigation |
+| `PageUp` `↑ + Shift` | Page Up |
+| `PageDown` `↓ + Shift` | Page Down |
+
+## Settings
+Below are the settings that you can use for customizing the editor. Settings are located in the home directory of a user in the `io.config.toml` file
+
+### Editor Section
+
+| Setting | Type |
+| --- | --- |
+| `display_cursor_position` | Boolean |
+| `enable_line_numbers` | Boolean |
