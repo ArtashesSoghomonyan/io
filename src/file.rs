@@ -1,14 +1,17 @@
 //! This module is for working with files and directories
 
 use std::{
-    fs::{self, File, OpenOptions},
-    io,
-    path::{Component, Path},
+    fs::{self, File, OpenOptions}, io, path::{Component, Path},
 };
 
 use colored::Colorize;
 use inquire::Confirm;
 use posix_portable_filename::PortableFilename;
+
+pub enum SupportedFiletype {
+    Directory,
+    File,
+}
 
 /// Checks that a path is non-empty and that every one of its components is a
 /// valid POSIX portable filename.
@@ -38,7 +41,7 @@ fn can_write(path: &Path) -> bool {
 }
 
 /// This function creates new files
-fn create_file(filename: &str) -> Result<String, io::Error> {
+pub fn create_file(filename: &str) -> io::Result<()> {
     // Checking if filename is valid and can be real (for example not .. or -123)
     if !is_valid_path(Path::new(filename)) {
         let err_message = format!("Error: {filename} is not a valid filename.");
@@ -49,7 +52,7 @@ fn create_file(filename: &str) -> Result<String, io::Error> {
     }
 
     match fs::write(filename, "") {
-        Ok(_) => return Ok(String::new()),
+        Ok(_) => return Ok(()),
         Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
             let err_message = format!("Error: Permission denied to create a file.");
             return Err(io::Error::new(
@@ -144,7 +147,10 @@ pub fn open_file(filename: &str) -> Result<String, io::Error> {
         let answer = Confirm::new(&message).with_default(true).prompt();
 
         match answer {
-            Ok(true) => return create_file(filename),
+            Ok(true) => match create_file(filename) {
+                Ok(()) => Ok(String::new()),
+                Err(error) => Err(error)
+            },
             Ok(false) => return Err(io::Error::new(io::ErrorKind::InvalidData, "Ok, bye!")),
             Err(_) => {
                 return Err(io::Error::new(
@@ -179,5 +185,24 @@ pub fn save_file(path: &Path, content: &String) -> Result<(), io::Error> {
             ));
         }
         Err(_) => Err(io::Error::new(io::ErrorKind::Other, "Err. couldn't save")),
+    }
+}
+
+pub fn path_filetype(filename: &str) -> Result<SupportedFiletype, io::Error> {
+    let path = Path::new(filename);
+
+    if path.exists() {
+        if path.is_file() {
+            return Ok(SupportedFiletype::File);
+        } else if path.is_dir() {
+            return Ok(SupportedFiletype::Directory);
+        } else {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Err. Filetype is not supported".red().to_string()
+            ))
+        }
+    } else {
+        return Err(io::Error::new(io::ErrorKind::InvalidFilename, "File does not exist!"))
     }
 }

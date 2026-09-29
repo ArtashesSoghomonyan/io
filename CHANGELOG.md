@@ -12,3 +12,9 @@
 ### Fixed
 - Ubuntu & Windows compilation error
 - Github Actions auto release draft
+
+## [0.2.0] - 2026-09-27
+
+### Added
+- Editing support
+- Prompt would you like to save
