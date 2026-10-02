@@ -5,14 +5,11 @@ use std::{io, path::Path};
 use clap::Parser;
 
 use crate::{
-    SETTINGS,
-    editor::display_file,
-    file::{open_file, path_filetype, SupportedFiletype},
-    settings::load_settings,
-    utils::prompt_create_new_file,
+    SETTINGS, editor::{FileEditor, display_file}, file::{SupportedFiletype, open_file, path_filetype}, settings::load_settings, terminal::TerminalGuard, utils::prompt_create_new_file,
 };
 
 #[derive(Parser, Debug)]
+#[command(arg_required_else_help = true)]
 struct Arguments {
     filename: Option<String>,
 
@@ -38,12 +35,12 @@ pub fn run() -> io::Result<()> {
     // case (io <filename>/<directory>)
     if let Some(filename) = arguments.filename.as_deref() {
         SETTINGS.set(load_settings()).unwrap();
-        let path = Path::new(filename);
 
         match path_filetype(filename) {
             Ok(SupportedFiletype::File) => {
-                let content = open_file(filename)?;
-                return display_file(path, &content);
+                let _guard = TerminalGuard::new()?;
+                let mut editor = FileEditor::new(filename)?;
+                editor.render.start()?;
             }
             Ok(SupportedFiletype::Directory) => {
                 println!("Directories are not supported yet...");
@@ -52,11 +49,17 @@ pub fn run() -> io::Result<()> {
             Err(error) => {
                 match error.kind() {
                     io::ErrorKind::InvalidInput => {
-                        eprintln!("{}", error);
+                        eprintln!("{}", error.to_string());
                         return Err(error)
                     }
                     io::ErrorKind::InvalidFilename => {
-                        return prompt_create_new_file(filename)
+                        match prompt_create_new_file(filename) {
+                            Ok(_) => return Ok(()),
+                            Err(error) => {
+                                eprintln!("{error}");
+                                std::process::exit(1);
+                            }
+                        }
                     }
                     _ => {}
                 }
@@ -64,8 +67,5 @@ pub fn run() -> io::Result<()> {
         }
     }
 
-    // case else
-    println!("io text editor (v{}) (\"less --help\" for help)", env!("CARGO_PKG_VERSION"));
-    println!("usage: io <filename>");
     Ok(())
 }

@@ -13,9 +13,11 @@ use crossterm::{
 
 use crate::{
     SETTINGS,
+    file::open_file,
     keybindings::handle_key,
     settings::{EditorSettings, Settings},
     terminal::TerminalGuard,
+    render::Render,
 };
 
 #[derive(Clone)]
@@ -88,6 +90,38 @@ impl Editor {
     }
 }
 
+// temporary debug helper — add near the top of editor.rs
+fn debug_log(msg: &str) {
+    if std::env::var_os("IO_DEBUG").is_none() {
+        return;
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("/tmp/io_debug.log")
+    {
+        let _ = writeln!(f, "{msg}");
+    }
+}
+
+pub struct FileEditor {
+    pub render: Render,
+    pub status_bar: String,
+    pub status_bar_height: usize,
+}
+
+impl FileEditor {
+    pub fn new(filename: &str) -> Result<Self, io::Error> {
+        let content = open_file(filename)?;
+
+        Ok(Self {
+            render: Render::new(PathBuf::from(filename), content)?,
+            status_bar: String::new(),
+            status_bar_height: 1,
+        })
+    }
+}
+
 pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
     let mut stdout = io::stdout();
     let _guard: TerminalGuard = TerminalGuard::new()?;
@@ -135,6 +169,11 @@ pub fn display_file(path: &Path, content: &String) -> io::Result<()> {
         }
         first_row.push(next); // sentinel = total visual rows
         let total_rows = next;
+
+        debug_log(&format!(
+            "first_row={first_row:?} total_rows={total_rows} vis_w={visible_row_count} top={}",
+            editor.top
+        ));
 
         for row in 0..visible_line_count {
             let vis = editor.top + row;

@@ -2,6 +2,7 @@ mod arguments;
 mod editor;
 mod file;
 mod keybindings;
+mod render;
 mod settings;
 mod terminal;
 mod utils;
